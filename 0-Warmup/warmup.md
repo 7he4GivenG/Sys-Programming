@@ -20,7 +20,9 @@ Please provide answers to these questions using markdown notation and place them
 [https://github.com/7he4GivenG/Sys-Programming](https://github.com/7he4GivenG/Sys-Programming)
 
 4. Briefly describe what you want to get out of this class.
+
 I want to improve my code efficiency by learning how to directly manage my system's resources.
 
 5. Briefly describe any concerns you might be having with being successful in this class (if any).
+
 No concerns so far, I'm eager to learn more about systems programming.
