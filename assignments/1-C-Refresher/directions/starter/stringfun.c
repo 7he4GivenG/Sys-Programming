@@ -116,15 +116,18 @@ void word_print(char *buff, int str_len) {
     int word_index = 1;
     int char_count = 0;
 
-    // Loop through each character of the string
+    // Prints the word's index, the actual word, and length
     for (int i = 0; i < str_len; i++) {
-        if (buff[i] != ' ') { // If the current character is not a space print the character
+        if (char_count == 0) {  // index
+            printf("%d. ", word_index); 
+        }
+        if (buff[i] != ' ') {   // word
             putchar(buff[i]);
             char_count++;
-        } else if (char_count > 0) { // If a space is encountered and a word has been counted 
+        } else {                // length
             printf(" (%d)\n", char_count);
             char_count = 0;
-            printf("%d. ", ++word_index); 
+            word_index++;
         }
     }
 
