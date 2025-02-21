@@ -52,29 +52,49 @@
  *      fork(), execvp(), exit(), chdir()
  */
 
-int build_cmd_buff(char *cmd_line, cmd_buff_t *cmd_buff) {
-    if (!cmd_line || !cmd_buff) return ERR_MEMORY;
+ int parse_input_line(char *input_line, cmd_buff_t *cmd_struct) {
+    if (!input_line || !cmd_struct) return ERR_MEMORY;
     
-    cmd_buff->argc = 0;
-    char *token = strtok(cmd_line, " ");
-    while (token && cmd_buff->argc < CMD_ARGV_MAX - 1) {
-        cmd_buff->argv[cmd_buff->argc++] = token;
+    cmd_struct->argc = 0;
+    char *token = strtok(input_line, " ");
+    while (token && cmd_struct->argc < CMD_ARGV_MAX - 1) {
+        cmd_struct->argv[cmd_struct->argc++] = token;
         token = strtok(NULL, " ");
     }
-    cmd_buff->argv[cmd_buff->argc] = NULL;
-    return (cmd_buff->argc > 0) ? OK : WARN_NO_CMDS;
+    cmd_struct->argv[cmd_struct->argc] = NULL;
+    return (cmd_struct->argc > 0) ? OK : WARN_NO_CMDS;
 }
 
-Built_In_Cmds identify_builtin_command(const char *command) {
+Built_In_Cmds identify_builtin_cmd(const char *command) {
     if (strcmp(command, "cd") == 0) return BI_CMD_CD;
     if (strcmp(command, "exit") == 0) return BI_CMD_EXIT;
     return BI_NOT_BI;
 }
 
+int execute_external_cmd(cmd_buff_t *cmd_struct) {
+    pid_t process_id = fork();
+    if (process_id < 0) {
+        perror("fork failed");
+        return ERR_EXEC_CMD;
+    } else if (process_id == 0) {
+        execvp(cmd_struct->argv[0], cmd_struct->argv);
+        perror("execvp failed");
+        exit(250);
+    } else {
+        int process_status;
+        waitpid(process_id, &process_status, 0);
+        if (WIFEXITED(process_status)) {
+            return WEXITSTATUS(process_status);
+        } else {
+            return -1;
+        }
+    }
+}
+
  int exec_local_cmd_loop()
 {
     char input_buffer[SH_CMD_MAX];
-    command_buffer_t cmd_buffer;
+    cmd_buff_t parsed_command;
 
     // TODO IMPLEMENT MAIN LOOP
 
@@ -101,16 +121,16 @@ Built_In_Cmds identify_builtin_command(const char *command) {
             exit(OK);
         }
 
-        memset(&cmd_buffer, 0, sizeof(cmd_buffer));
-        if (parse_command(input_buffer, &cmd_buffer) != OK) {
+        memset(&parsed_command, 0, sizeof(parsed_command));
+        if (parse_input_line(input_buffer, &parsed_command) != OK) {
             printf("%s\n", CMD_WARN_NO_CMD);
             continue;
         }
 
-        Built_In_Cmds builtin_cmd = identify_builtin_command(cmd_buffer.arguments[0]);
+        Built_In_Cmds builtin_cmd = identify_builtin_cmd(parsed_command.argv[0]);
         if (builtin_cmd == BI_CMD_CD) {
-            if (cmd_buffer.arg_count > 1) {
-                if (chdir(cmd_buffer.arguments[1]) != 0) {
+            if (parsed_command.argc > 1) {
+                if (chdir(parsed_command.argv[1]) != 0) {
                     perror("cd");
                 }
             }
@@ -119,27 +139,14 @@ Built_In_Cmds identify_builtin_command(const char *command) {
             exit(OK);
         }
 
-        int exit_status = execute_command(&cmd_buffer);
-        if (exit_status != 0) {
-            exit(exit_status);
+        int execution_status = execute_external_cmd(&parsed_command);
+
+        if (execution_status != 0) {
+            exit(execution_status);
         }
     }
 
     return OK;
 }
 
-int execute_command(command_buffer_t *cmd_buffer) {
-    pid_t process_id = fork();
-    if (process_id < 0) {
-        perror("fork failed");
-        return ERR_EXEC_CMD;
-    } else if (process_id == 0) {
-        execvp(cmd_buffer->arguments[0], cmd_buffer->arguments);
-        perror("execvp failed");
-        exit(250);
-    } else { 
-        int status;
-        waitpid(process_id, &status, 0);
-        return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-    }
-}
+
