@@ -44,12 +44,53 @@
  *
  *  See the provided test cases for output expectations.
  */
-int main()
+int main() 
 {
-    char *cmd_buff;
-    int rc = 0;
-    command_list_t clist;
+    char cmd_buff[SH_CMD_MAX];  // Buffer to hold user input
+    int rc;  // Return code from command parsing
+    command_list_t clist;  // Structure to store parsed commands
 
-    printf(M_NOT_IMPL);
-    exit(EXIT_NOT_IMPL);
+    while (1) {
+        printf("%s", SH_PROMPT);
+        fflush(stdout);  // Ensures the prompt is displayed immediately
+
+        // Read input from user; handle EOF (Ctrl+D) gracefully
+        if (fgets(cmd_buff, SH_CMD_MAX, stdin) == NULL) {
+            printf("\n");  // Ensures clean output formatting
+            break;
+        }
+
+        // Remove trailing newline character
+        cmd_buff[strcspn(cmd_buff, "\n")] = '\0';
+
+        // Check if the user entered the exit command
+        if (strcmp(cmd_buff, EXIT_CMD) == 0) {
+            exit(OK);
+        }
+
+        // Initialize command list structure to clear previous command data
+        memset(&clist, 0, sizeof(clist));
+
+        // Parse the input command into structured commands
+        rc = build_cmd_list(cmd_buff, &clist);
+
+        // Handle possible parsing errors
+        if (rc == WARN_NO_CMDS) {
+            printf("%s\n", CMD_WARN_NO_CMD);  // Warn about empty input
+        } else if (rc == ERR_TOO_MANY_COMMANDS) {
+            printf(CMD_ERR_PIPE_LIMIT, CMD_MAX);  // Warn about excessive piping
+        } else if (rc == OK) {
+            // Print successfully parsed commands
+            printf(CMD_OK_HEADER, clist.num);
+            for (int i = 0; i < clist.num; i++) {
+                printf("<%d> %s", i + 1, clist.commands[i].exe);
+                if (strlen(clist.commands[i].args) > 0) {
+                    printf(" [%s]", clist.commands[i].args);  // Print arguments if any
+                }
+                printf("\n");
+            }
+        }
+    }
+
+    return OK;
 }
